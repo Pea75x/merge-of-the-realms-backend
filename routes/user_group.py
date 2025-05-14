@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisco
 from sqlalchemy.orm import Session
 from database import get_db
 from models.user_group import *
+from models.group import Group
 from models.user import User
 from schemas.user_group import *
 from collections import defaultdict
@@ -40,7 +41,7 @@ def update_user_group(
     user_group_id: int,
     status_data: UserStatusUpdate,
     db: Session = Depends(get_db)
-):
+  ):
     user_group = db.query(UserGroup).filter(UserGroup.id == user_group_id).first()
     if not user_group:
         raise HTTPException(status_code=404, detail="invite not found")
@@ -76,18 +77,27 @@ async def quest_council_ws(websocket: WebSocket, group_id: int):
 
 async def broadcast_group_status(group_id: int, db: Session):
     user_groups = db.query(UserGroup).filter_by(group_id=group_id).all()
+    group = db.query(Group).filter_by(id=group_id).first()
+
     data = [
         {
-            "user": {
-                "id": invite.user.id,
-                "name": invite.user.name,
-                "email": invite.user.email,
-                "avatar": invite.user.avatar
-            },
+            "id": invite.user.id,
+            "name": invite.user.name,
+            "email": invite.user.email,
+            "avatar": invite.user.avatar,
+            "weapons": invite.user.weapons,
+            "title": invite.user.title,
             "status": invite.status
         }
         for invite in user_groups
     ]
-    message = json.dumps({"group_id": group_id, "members": data})
-    for ws in group_connections[group_id]:
-        await ws.send_text(message)
+    message = json.dumps({"quest": group.name, "members": data})
+
+    connections = list(group_connections.get(group_id, set()))
+
+    for ws in connections:
+        try:
+            await ws.send_text(message)
+        except Exception:
+            # Connection is likely closed — remove it
+            group_connections[group_id].remove(ws)

@@ -11,3 +11,4 @@ class UserGroup(Base):
     status = Column(String, default="invited", nullable=False)
 
     user = relationship("User", back_populates="user_groups")
+    group = relationship("Group", back_populates="user_groups")

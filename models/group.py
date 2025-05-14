@@ -1,5 +1,6 @@
 from sqlalchemy import Column, Integer, String
 from database import Base
+from sqlalchemy.orm import relationship
 
 class Group(Base):
     __tablename__ = "groups"
@@ -16,3 +17,5 @@ class Group(Base):
     build_time_taken = Column(Integer, nullable=True)
     testing_time_allocated = Column(Integer, nullable=True)
     testing_tme_taken = Column(Integer, nullable=True)
+
+    user_groups = relationship("UserGroup", back_populates="group")
